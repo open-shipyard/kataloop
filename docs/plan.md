@@ -20,14 +20,14 @@ rounds bounded (ENG-13), the deadline (ENG-6), cancellation that closes the
 model's stream (ENG-5). An in-process `Toolbox` of Python callables, so that
 the core runs and is tested without MCP. Specified in `docs/specs/turn.md`.
 
-## 3. Memory in the process (next)
+## 3. Memory in the process (done)
 
 The `Store` port's first implementation, in memory. A checkpoint per finished
 turn, holding the conversation in uni-llm-client's JSON form; rounds saved as
 they complete, for resume (ENG-7); fork (ENG-8); forget (ENG-9). Checkpoint
-ids minted by the engine.
+ids minted by the engine. Specified in `docs/specs/memory.md`.
 
-## 4. The HTTP tests
+## 4. The HTTP tests (next)
 
 In `tests` at the root, as in uni-llm-client: a runner that starts each port's
 test server, a mock vendor that serves uni-llm-client's vendor payloads, a
@@ -40,8 +40,8 @@ package. Coverage comes from this suite alone. The suite runs against
 ## 5. MCP tool servers
 
 The `Toolbox` over the MCP SDK, in `kataloop`: streamable HTTP, the headers
-the caller resolved, the server's timeout, tool names `<server id>_<tool>`,
-`exclude` honoured (ENG-11).
+the caller resolved, the server's timeout, tools under their servers' own
+names, `exclude` honoured (ENG-11).
 
 ## 6. Context management
 

@@ -11,13 +11,21 @@ and this project adheres to
 ### Added
 
 - The engine contract: `Engine`, its values and events, and the `Store` and
-  `Toolbox` ports, in `kataloop-core`. Specified in `docs/specs/engine.md`.
-- `Kataloop`, the engine: one turn over uni-llm-client's `stream`, its tool
-  calls run together through the `Toolbox`, failures as error results, paused
-  turns sent back, rounds bounded by `RoundsExceededError`, the deadline, and
-  cancellation that closes the model's stream. Specified in
+  `Toolbox` ports, in `kataloop-core`; `Engine.stream` is typed
+  `AsyncGenerator[Event, None]`, so that a caller closes it without a cast.
+  Specified in `docs/specs/engine.md`.
+- `Kataloop`, the engine: one turn over uni-llm-client's `stream`, its tools
+  offered under their servers' own names (a name two servers offer is a
+  `ValueError`), its tool calls run together through the `Toolbox`, failures
+  and timeouts as error results, a `tool_use` stop without a call ending the
+  turn, paused turns sent back, rounds bounded by `RoundsExceededError`, the
+  deadline, and cancellation that closes the model's stream. Specified in
   `docs/specs/turn.md`.
 - `LocalToolbox`, the tools of the process's own, and `MemoryStore`, memory
   that lasts as long as the process.
+- Memory: a checkpoint per finished turn holding the conversation in
+  uni-llm-client's JSON form, each round of a turn in progress saved for
+  resume (ENG-7), fork (ENG-8) and forget (ENG-9); `Store.latest_checkpoint`
+  for resume. Specified in `docs/specs/memory.md`.
 
 [Unreleased]: https://github.com/the-guish/kataloop/commits/main

@@ -10,7 +10,6 @@ import asyncio
 import math
 from collections.abc import AsyncGenerator, AsyncIterator, Awaitable, Sequence
 from contextlib import aclosing
-from dataclasses import dataclass
 from typing import cast
 from uuid import UUID, uuid4
 
@@ -32,20 +31,12 @@ from kataloop_core._contract import (
     ToolResult,
     ToolServer,
 )
-from kataloop_core._memory import checkpoint_memory, messages_of
+from kataloop_core._memory import Checkpoint, PartialTurn
 from kataloop_core._ports import Store, Toolbox, ToolOutput, ToolSpec
 
 FASTEST_MODEL_CALL = 1.0
 """Seconds: a turn makes at most one model call per second of its timeout
 (ENG-13). Real rounds are slower; a loop faster than that is runaway."""
-
-
-@dataclass(frozen=True, slots=True)
-class _Route:
-    """Where a tool the model is offered lives: its server, and its name there."""
-
-    server: ToolServer
-    name: str
 
 
 class Kataloop(Engine):
@@ -84,7 +75,7 @@ class Kataloop(Engine):
         checkpoint_id: str | None,
         timeout: float,
         resume: bool = False,
-    ) -> AsyncIterator[Event]:
+    ) -> AsyncGenerator[Event, None]:
         # An async generator: nothing runs before the first iteration (ENG-1).
         if not (math.isfinite(timeout) and timeout > 0):  # TURN-1
             raise ValueError(f"The timeout must be positive seconds, not {timeout!r}")
@@ -93,7 +84,18 @@ class Kataloop(Engine):
         most_calls = math.ceil(timeout / FASTEST_MODEL_CALL)  # ENG-13, TURN-7
 
         history = await _within(deadline, self._history(session_id, checkpoint_id))
-        turn = [llm.Message.user(prompt)]
+        turn: list[llm.Message] | None = None
+        if resume:  # ENG-7, MEM-5
+            resumed = await _within(deadline, self._resumed(session_id, checkpoint_id))
+            if isinstance(resumed, Done):
+                yield resumed
+                return
+            if resumed is not None:
+                prompt, turn = resumed.prompt, list(resumed.messages)
+        if turn is None:
+            # A turn from its prompt forgets the rounds of the one before (MEM-4).
+            await _within(deadline, self._store.clear_partial(session_id))
+            turn = [llm.Message.user(prompt)]
         servers = agent.tool_servers
         listed = [await _within(deadline, self._toolbox.tools(s)) for s in servers]
         routes, tools = _offered(servers, listed)
@@ -138,8 +140,12 @@ class Kataloop(Engine):
             usage = _sum(usage, response.usage)
             turn.append(response.message)
 
+            uses = response.message.tool_uses
             match response.stop_reason:  # TURN-5
                 case llm.StopReason.END_TURN:
+                    break
+                case llm.StopReason.TOOL_USE if not uses:
+                    # No call to run: the turn ends as with end_turn.
                     break
                 case llm.StopReason.MAX_TOKENS:
                     # A cut answer is not an answer.
@@ -147,23 +153,23 @@ class Kataloop(Engine):
                         "The model's output limit cut the turn short"
                     )
                 case llm.StopReason.TOOL_USE:
-                    uses = response.message.tool_uses
                     results = await _within(deadline, self._run(routes, uses))
                     turn.append(llm.Message.tool_results(*results))
-                    for use, result in zip(uses, results, strict=True):
-                        yield ToolResult(
-                            use.id, use.name, result.content, result.is_error
-                        )
                 case llm.StopReason.PAUSE_TURN:
                     # The vendor's own loop paused: sent back, it goes on.
-                    pass
+                    uses, results = (), []
+            # Saved before its results are told, so that a result told never runs
+            # again on resume (ENG-7, MEM-4).
+            partial = PartialTurn(checkpoint_id, prompt, tuple(turn)).to_dict()
+            await _within(deadline, self._store.save_partial(session_id, partial))
+            for use, result in zip(uses, results, strict=True):
+                yield ToolResult(use.id, use.name, result.content, result.is_error)
 
         text = turn[-1].text  # the final assistant message's
         new_id = uuid4().hex
-        memory = checkpoint_memory(
-            parent=checkpoint_id, prompt=prompt, text=text, messages=[*history, *turn]
-        )
-        # The memory holds the turn before Done is yielded (ENG-4, TURN-10).
+        memory = Checkpoint(checkpoint_id, prompt, text, (*history, *turn)).to_dict()
+        # The memory holds the turn, and no longer its rounds, before Done is
+        # yielded (ENG-4, TURN-10, MEM-4).
         await _within(deadline, self._store.add_checkpoint(session_id, new_id, memory))
         yield Done(text, new_id, usage)
 
@@ -178,19 +184,41 @@ class Kataloop(Engine):
 
     async def _history(
         self, session_id: UUID, checkpoint_id: str | None
-    ) -> list[llm.Message]:
+    ) -> tuple[llm.Message, ...]:
         """The conversation the turn goes on from, after the refusals of ENG-2."""
         if not await self._store.exists(session_id):
             raise SessionNotFoundError(str(session_id))
         if checkpoint_id is None:
-            return []
+            return ()
         memory = await self._store.checkpoint(session_id, checkpoint_id)
         if memory is None:
             raise CheckpointNotFoundError(checkpoint_id)
-        return messages_of(memory)
+        return Checkpoint.from_dict(memory).messages  # MEM-1
+
+    async def _resumed(
+        self, session_id: UUID, checkpoint_id: str | None
+    ) -> PartialTurn | Done | None:
+        """What a resumed turn goes on with (MEM-5): the partial turn begun from
+        the checkpoint; else the `Done` of the turn that finished from it, with no
+        usage (MEM-6); else nothing, and the prompt runs."""
+        state = await self._store.partial(session_id)
+        if state is not None:
+            partial = PartialTurn.from_dict(state)
+            if partial.parent == checkpoint_id:
+                return partial
+        latest = await self._store.latest_checkpoint(session_id)
+        if latest is None:
+            return None
+        memory = await self._store.checkpoint(session_id, latest)
+        if memory is None:
+            return None
+        finished = Checkpoint.from_dict(memory)
+        if finished.parent != checkpoint_id:
+            return None
+        return Done(finished.text, latest, llm.Usage())
 
     async def _run(
-        self, routes: dict[str, _Route], uses: Sequence[llm.ToolUseBlock]
+        self, routes: dict[str, ToolServer], uses: Sequence[llm.ToolUseBlock]
     ) -> list[llm.ToolResultBlock]:
         """The results of a round's tool calls, in their order: every call runs,
         all together, and each gets a result (ENG-11, TURN-6)."""
@@ -201,21 +229,19 @@ class Kataloop(Engine):
         ]
 
     async def _call(
-        self, routes: dict[str, _Route], use: llm.ToolUseBlock
+        self, routes: dict[str, ToolServer], use: llm.ToolUseBlock
     ) -> ToolOutput:
         """What the model is told of one tool call: the tool's answer, or its
         failure as an error result (ENG-11, TURN-6)."""
-        route = routes.get(use.name)
-        if route is None:
+        server = routes.get(use.name)
+        if server is None:
             return ToolOutput(f"There is no tool named {use.name!r}.", is_error=True)
-        timeout = route.server.timeout
+        timeout = server.timeout
         try:
             async with asyncio.timeout(timeout):
-                return await self._toolbox.call(route.server, route.name, use.input)
+                return await self._toolbox.call(server, use.name, use.input)
         except TimeoutError:
-            return ToolOutput(
-                f"The tool call timed out after {timeout:g} seconds.", is_error=True
-            )
+            return ToolOutput(f"Timed out after {timeout:g} seconds.", is_error=True)
         # CancelledError is no Exception: it is let through (ENG-5, TURN-9).
         except Exception as error:
             return ToolOutput(
@@ -225,20 +251,22 @@ class Kataloop(Engine):
 
 def _offered(
     servers: Sequence[ToolServer], listed: Sequence[Sequence[ToolSpec]]
-) -> tuple[dict[str, _Route], list[llm.Tool]]:
-    """The tools the model is offered, `<server id>_<tool>`, without those each
-    server excludes, and where each lives (ENG-11, TURN-2)."""
-    routes: dict[str, _Route] = {}
+) -> tuple[dict[str, ToolServer], list[llm.Tool]]:
+    """The tools the model is offered, under their servers' own names, without
+    those each server excludes, and where each lives (ENG-11, TURN-2)."""
+    routes: dict[str, ToolServer] = {}
     tools: list[llm.Tool] = []
     for server, specs in zip(servers, listed, strict=True):
         for spec in specs:
             if spec.name in server.exclude:
                 continue
-            name = f"{server.id}_{spec.name}"
-            if name in routes:
-                raise ValueError(f"Two tools are named {name!r}")
-            routes[name] = _Route(server, spec.name)
-            tools.append(llm.Tool(name, spec.description, spec.input_schema))
+            if spec.name in routes:
+                raise ValueError(
+                    f"Two tools are named {spec.name!r}: servers "
+                    f"{routes[spec.name].id!r} and {server.id!r}"
+                )
+            routes[spec.name] = server
+            tools.append(llm.Tool(spec.name, spec.description, spec.input_schema))
     return routes, tools
 
 
