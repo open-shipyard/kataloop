@@ -43,7 +43,9 @@ and for mcp 2:
 Ruff does not depend on the major, so CI runs it once.
 
 The code of one major lives in modules whose names end in `_mcp1.py` or
-`_mcp2.py`: `kataloop/src/kataloop/_mcp1.py` and `_mcp2.py`. Each imports its major's SDK and HTTP stack, so it can be
+`_mcp2.py`: `kataloop/src/kataloop/_mcp1.py` and `_mcp2.py`, and the MCP server
+of `kataloop`'s unit tests, `kataloop/tests/serving_mcp1.py` and
+`serving_mcp2.py`. Each imports its major's SDK and HTTP stack, so it can be
 type-checked only where they are installed: `--exclude` leaves the other
 major's modules out of mypy's files. The code that picks a major branches on
 `MCP_2`, which `kataloop._mcp_toolbox` reads from the version of `mcp`
@@ -51,9 +53,12 @@ installed; `--always-true MCP_2` or `--always-false MCP_2` makes it a constant
 for mypy, which then checks the branch the environment takes and skips the
 other. Both runs are strict, and between them every module is checked.
 
-`pytest` runs the unit tests of the core, in `kataloop-core/tests`. They drive
-the loop through uni-llm-client against a fake vendor; they report no coverage,
-which comes from the language-agnostic tests alone.
+`pytest` runs the unit tests of both packages, in `kataloop-core/tests` and
+`kataloop/tests`. The core's drive the loop through uni-llm-client against a
+fake vendor, and `kataloop`'s run `McpToolbox` against an MCP server of the
+major's SDK in the process, served through an ASGI transport, with the same
+tests and answers on each major; they report no coverage, which comes from the
+language-agnostic tests alone.
 
 Build one package at a time:
 

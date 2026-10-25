@@ -53,6 +53,6 @@ and this project adheres to
   without the vendor's content, and the turn's checkpoint keeps it compacted;
   a turn compacted between its rounds replays its earlier rounds from their
   blocks too, from then on. Specified in `docs/specs/context.md`.
-- Unit tests of the core, run with `uv run pytest`.
+- Unit tests of the core and of `McpToolbox`, run with `uv run pytest`.
 
 [Unreleased]: https://github.com/the-guish/kataloop/commits/main

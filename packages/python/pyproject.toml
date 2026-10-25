@@ -40,7 +40,7 @@ dev = [
 [tool.ruff]
 line-length = 88
 # First-party for the import order: the packages, and the tests' own helpers.
-src = ["kataloop-core/src", "kataloop/src", "kataloop-core/tests"]
+src = ["kataloop-core/src", "kataloop/src", "kataloop-core/tests", "kataloop/tests"]
 
 [tool.ruff.lint]
 select = ["E", "W", "F", "I", "B", "UP", "SIM", "RUF"]
@@ -51,12 +51,17 @@ select = ["E", "W", "F", "I", "B", "UP", "SIM", "RUF"]
 # on mcp 2.
 [tool.mypy]
 strict = true
-files = ["kataloop-core/src", "kataloop/src", "kataloop-core/tests"]
+files = [
+    "kataloop-core/src",
+    "kataloop/src",
+    "kataloop-core/tests",
+    "kataloop/tests",
+]
 
 # Unit tests of each package. The language-agnostic HTTP tests are in `tests` at
 # the root of the repository (docs/plan.md).
 [tool.pytest.ini_options]
-testpaths = ["kataloop-core/tests"]
+testpaths = ["kataloop-core/tests", "kataloop/tests"]
 addopts = ["--strict-config", "--strict-markers"]
 xfail_strict = true
 # A coroutine never awaited or a stream never closed is a failure, not a warning.
