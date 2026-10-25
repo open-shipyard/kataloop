@@ -34,6 +34,7 @@ jobs:
             typescript:
               - packages/typescript/**
 
+  # The checks that read the code alike on either major of the MCP SDK, once.
   python-lint:
     needs: changes
     if: needs.changes.outputs.python == 'true'
@@ -51,12 +52,38 @@ jobs:
       - run: uv sync --locked
       - run: uv run --locked ruff check
       - run: uv run --locked ruff format --check
-      - run: uv run --locked mypy
       # Each package ships copies of the root license files.
       - run: |
           for p in kataloop-core kataloop; do
             for f in LICENSE NOTICE AUTHORS; do cmp "$p/$f" "../../$f"; done
           done
+
+  # mypy in an environment of each major of the MCP SDK, leaving out the other
+  # major's modules (packages/python/CONTRIBUTING.md).
+  python-typecheck:
+    needs: changes
+    if: needs.changes.outputs.python == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - extra: mcp-1
+            mypy: "--always-false MCP_2 --exclude '_mcp2\\.py$'"
+          - extra: mcp-2
+            mypy: "--always-true MCP_2 --exclude '_mcp1\\.py$'"
+    env:
+      UV_PROJECT_ENVIRONMENT: .venv-${{ matrix.extra }}
+    defaults:
+      run:
+        working-directory: packages/python
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+      - run: uv sync --locked --extra ${{ matrix.extra }}
+      - run: uv run --locked mypy ${{ matrix.mypy }}
 
   python-build:
     needs: changes
@@ -98,6 +125,7 @@ jobs:
     needs:
       - changes
       - python-lint
+      - python-typecheck
       - python-build
       - typescript
     runs-on: ubuntu-latest

@@ -37,11 +37,12 @@ every request and reply. The Python test server lives in
 package. Coverage comes from this suite alone. The suite runs against
 `kataloop`, so it exercises the MCP toolbox too.
 
-## 5. MCP tool servers
+## 5. MCP tool servers (done)
 
 The `Toolbox` over the MCP SDK, in `kataloop`: streamable HTTP, the headers
 the caller resolved, the server's timeout, tools under their servers' own
-names, `exclude` honoured (ENG-11).
+names, `exclude` honoured (ENG-11). A session per listing and per call, so
+that the port needs no open or close. Specified in `docs/specs/tools.md`.
 
 ## 6. Context management (done)
 
@@ -56,13 +57,33 @@ turn's rounds before a compaction in its middle, and the checkpoint keeps it
 compacted. Specified in `docs/specs/context.md`. The model
 table and cache breakpoints wait for uni-llm-client (Deferred).
 
-## 7. The adapter in robinauts
+## 7. The adapter in robinauts (done, on kataloop[mcp-1])
 
 `agent_engines/kataloop_engine` implementing robinauts' `AgentEngine` over
 `kataloop`: providers from its settings into uni-llm-client `ProviderConfig`s
 with keys from `key_for`, tool servers into `ToolServer`s with headers from
 `secret_for`, models into `ModelSpec`s, the storage kind into a `Store`. It
 passes robinauts' engine contract tests and its licence gate.
+
+The adapter is `agent_engines/kataloop_engine` on robinauts' branch. It
+depends on `kataloop[mcp-1]`, since robinauts' LangChain engine needs
+`langchain-mcp-adapters`, which requires `mcp<2`; it moves to `kataloop[mcp-2]`
+when that client does. It first depended on `kataloop-core` with a toolbox of
+its own over mcp 1, until step 8 lifted the constraint. Memory lives in the
+process until `kataloop[postgres]`.
+
+## 8. McpToolbox on mcp 1 and 2 (done)
+
+`McpToolbox` runs on the major of the MCP SDK the environment holds:
+`kataloop` depends on `mcp>=1.30,<3`, and its extras `mcp-1` and `mcp-2`,
+declared to conflict so that one lock file resolves each on its own, narrow it
+to one. The one public toolbox takes `_mcp1` or `_mcp2` when `kataloop` is
+imported, by the version installed, and what the two share is one module. A
+factory's client is the SDK's HTTP stack's, httpx on mcp 1 and httpx2 on mcp
+2, exported as `McpHttpClient`. The checks run in an environment per major.
+Specified in
+`docs/specs/tools.md` (TOOLS-8 to TOOLS-10). robinauts' adapter depends on
+`kataloop[mcp-1]` and dropped its own toolbox.
 
 ## Deferred
 
