@@ -94,7 +94,8 @@ redirects the requests to its mock while keeping their URL.
   status or a redirect the SDK does not follow, which mcp 2 reads as one and
   mcp 1 would raise as `HTTPStatusError`. What differs is the SDK's own: the
   protocol version and client information of the initialise handshake, and
-  the HTTP stack's user agent.
+  the HTTP stack's user agent. The language-agnostic tests run the test server
+  on each major, against one mock server on mcp 2.
 
 ## Non-goals
 

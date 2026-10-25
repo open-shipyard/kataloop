@@ -39,7 +39,7 @@ and this project adheres to
   exported, are the HTTP client and timeout of that major's stack, httpx on
   mcp 1 and httpx2 on mcp 2, for a caller's `HttpClientFactory`. Specified in
   `docs/specs/tools.md`. The checks and unit tests run in an environment per
-  major.
+  major, and the HTTP tests run the test server in each.
 - Context management, so that a conversation stays within the model's window
   (ENG-12): the window is `ModelSpec.context_window`, else
   `DEFAULT_CONTEXT_WINDOW` (128,000 tokens, exported), and one that is not
@@ -54,5 +54,11 @@ and this project adheres to
   a turn compacted between its rounds replays its earlier rounds from their
   blocks too, from then on. Specified in `docs/specs/context.md`.
 - Unit tests of the core and of `McpToolbox`, run with `uv run pytest`.
+- The language-agnostic HTTP tests in `tests`: a mock vendor, a mock MCP server
+  on the MCP SDK's own server, and cases of steps that compare every vendor
+  request, every tool server request and every reply with their payloads. The
+  Python test server in `packages/python/tests` exposes the engine over HTTP;
+  the suite's coverage of both packages is the coverage CI reports. The
+  protocol is in `tests/README.md`.
 
 [Unreleased]: https://github.com/the-guish/kataloop/commits/main

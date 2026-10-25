@@ -29,15 +29,16 @@ turn, holding the conversation in uni-llm-client's JSON form; rounds saved as
 they complete, for resume (ENG-7); fork (ENG-8); forget (ENG-9). Checkpoint
 ids minted by the engine. Specified in `docs/specs/memory.md`.
 
-## 4. The HTTP tests (next)
+## 4. The HTTP tests (done)
 
 In `tests` at the root, as in uni-llm-client: a runner that starts each port's
-test server, a mock vendor that serves uni-llm-client's vendor payloads, a
-mock MCP server, and cases made of steps that assert the JSON payloads of
-every request and reply. The Python test server lives in
-`packages/python/tests` and exposes the `Engine` over HTTP; it ships in no
-package. Coverage comes from this suite alone. The suite runs against
-`kataloop`, so it exercises the MCP toolbox too.
+test server, a mock vendor that serves vendor payloads in uni-llm-client's
+forms, a mock MCP server on the MCP SDK's own server, and cases made of steps
+that assert the JSON payloads of every request and reply. The Python test
+server lives in `packages/python/tests` and exposes the `Engine` over HTTP; it
+ships in no package. Coverage of both packages comes from this suite alone. The
+suite runs against `kataloop`, so it exercises the MCP toolbox too. The
+protocol is in `tests/README.md`.
 
 ## 5. MCP tool servers (done)
 
@@ -82,8 +83,9 @@ declared to conflict so that one lock file resolves each on its own, narrow it
 to one. The one public toolbox takes `_mcp1` or `_mcp2` when `kataloop` is
 imported, by the version installed, and what the two share is one module. A
 factory's client is the SDK's HTTP stack's, httpx on mcp 1 and httpx2 on mcp
-2, exported as `McpHttpClient`. The checks run in an environment per major.
-Specified in
+2, exported as `McpHttpClient`. The checks run in an environment per major,
+and the HTTP tests start the test server in each, as `python-mcp-1` and
+`python-mcp-2`, against the mock MCP server on mcp 2. Specified in
 `docs/specs/tools.md` (TOOLS-8 to TOOLS-10). robinauts' adapter depends on
 `kataloop[mcp-1]` and dropped its own toolbox.
 
