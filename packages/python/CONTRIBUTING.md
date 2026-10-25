@@ -29,6 +29,7 @@ Run the checks from this directory; they cover both packages. For mcp 1:
     uv run --locked ruff check
     uv run --locked ruff format --check
     uv run --locked mypy --always-false MCP_2 --exclude '_mcp2\.py$'
+    uv run --locked pytest
 
 and for mcp 2:
 
@@ -37,6 +38,7 @@ and for mcp 2:
     uv run --locked ruff check
     uv run --locked ruff format --check
     uv run --locked mypy --always-true MCP_2 --exclude '_mcp1\.py$'
+    uv run --locked pytest
 
 Ruff does not depend on the major, so CI runs it once.
 
@@ -48,6 +50,10 @@ major's modules out of mypy's files. The code that picks a major branches on
 installed; `--always-true MCP_2` or `--always-false MCP_2` makes it a constant
 for mypy, which then checks the branch the environment takes and skips the
 other. Both runs are strict, and between them every module is checked.
+
+`pytest` runs the unit tests of the core, in `kataloop-core/tests`. They drive
+the loop through uni-llm-client against a fake vendor; they report no coverage,
+which comes from the language-agnostic tests alone.
 
 Build one package at a time:
 

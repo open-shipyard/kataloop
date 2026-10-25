@@ -18,7 +18,9 @@ the tool calls it asks for through the `Toolbox`, parallel calls run together,
 a failing call reported as an error result, the vendor's paused turns resumed,
 rounds bounded (ENG-13), the deadline (ENG-6), cancellation that closes the
 model's stream (ENG-5). An in-process `Toolbox` of Python callables, so that
-the core runs and is tested without MCP. Specified in `docs/specs/turn.md`.
+the core runs and is tested without MCP. Specified in `docs/specs/turn.md`;
+the unit tests of the core drive it through uni-llm-client against a fake
+vendor.
 
 ## 3. Memory in the process (done)
 

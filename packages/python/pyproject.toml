@@ -29,14 +29,18 @@ uni-llm-client = { git = "https://github.com/the-guish/uni-llm-client", rev = "b
 
 [dependency-groups]
 dev = [
+    # The unit tests drive the loop through uni-llm-client's own HTTP client.
+    "httpx2",
     "mypy>=2",
+    "pytest>=9.1",
+    "pytest-asyncio>=1.4",
     "ruff>=0.16",
 ]
 
 [tool.ruff]
 line-length = 88
-# First-party for the import order: the packages.
-src = ["kataloop-core/src", "kataloop/src"]
+# First-party for the import order: the packages, and the tests' own helpers.
+src = ["kataloop-core/src", "kataloop/src", "kataloop-core/tests"]
 
 [tool.ruff.lint]
 select = ["E", "W", "F", "I", "B", "UP", "SIM", "RUF"]
@@ -47,4 +51,15 @@ select = ["E", "W", "F", "I", "B", "UP", "SIM", "RUF"]
 # on mcp 2.
 [tool.mypy]
 strict = true
-files = ["kataloop-core/src", "kataloop/src"]
+files = ["kataloop-core/src", "kataloop/src", "kataloop-core/tests"]
+
+# Unit tests of each package. The language-agnostic HTTP tests are in `tests` at
+# the root of the repository (docs/plan.md).
+[tool.pytest.ini_options]
+testpaths = ["kataloop-core/tests"]
+addopts = ["--strict-config", "--strict-markers"]
+xfail_strict = true
+# A coroutine never awaited or a stream never closed is a failure, not a warning.
+filterwarnings = ["error"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"

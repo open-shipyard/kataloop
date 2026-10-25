@@ -48,12 +48,14 @@ an environment of its own that `UV_PROJECT_ENVIRONMENT` names. In
     uv run --locked ruff check
     uv run --locked ruff format --check
     uv run --locked mypy --always-false MCP_2 --exclude '_mcp2\.py$'
+    uv run --locked pytest
 
 and for mcp 2:
 
     export UV_PROJECT_ENVIRONMENT=.venv-mcp-2
     uv sync --locked --extra mcp-2
     uv run --locked mypy --always-true MCP_2 --exclude '_mcp1\.py$'
+    uv run --locked pytest
 
 Ruff reads the code alike in either, so once is enough; why mypy takes those
 flags is in [packages/python/CONTRIBUTING.md](packages/python/CONTRIBUTING.md).

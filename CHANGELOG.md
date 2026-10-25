@@ -38,7 +38,8 @@ and this project adheres to
   status, is an `MCPError` on each. `McpHttpClient` and `McpHttpTimeout`,
   exported, are the HTTP client and timeout of that major's stack, httpx on
   mcp 1 and httpx2 on mcp 2, for a caller's `HttpClientFactory`. Specified in
-  `docs/specs/tools.md`. The checks run in an environment per major.
+  `docs/specs/tools.md`. The checks and unit tests run in an environment per
+  major.
 - Context management, so that a conversation stays within the model's window
   (ENG-12): the window is `ModelSpec.context_window`, else
   `DEFAULT_CONTEXT_WINDOW` (128,000 tokens, exported), and one that is not
@@ -52,5 +53,6 @@ and this project adheres to
   without the vendor's content, and the turn's checkpoint keeps it compacted;
   a turn compacted between its rounds replays its earlier rounds from their
   blocks too, from then on. Specified in `docs/specs/context.md`.
+- Unit tests of the core, run with `uv run pytest`.
 
 [Unreleased]: https://github.com/the-guish/kataloop/commits/main
