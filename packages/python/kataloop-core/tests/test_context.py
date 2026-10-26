@@ -126,8 +126,10 @@ def test_the_window_is_the_specs_else_the_default() -> None:
 async def test_a_window_that_is_not_positive_is_refused(
     engine: Kataloop, vendor: FakeVendor, session: UUID, window: int
 ) -> None:
+    model = ModelSpec(MODEL.id, context_window=window)
+
     with pytest.raises(ValueError, match="context window"):
-        await run(engine, session, model=ModelSpec(MODEL.id, context_window=window))
+        await run(engine, session, model=model)
     assert vendor.requests == []
 
 
