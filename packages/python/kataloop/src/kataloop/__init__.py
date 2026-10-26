@@ -4,20 +4,34 @@
 """A small agent loop over uni-llm-client, with MCP tool servers.
 
 The API is kataloop-core's, re-exported here; this package adds what needs a
-dependency (docs/specs/principles.md).
+dependency (docs/specs/principles.md): `McpToolbox`, the tools of MCP servers,
+on the major of the MCP SDK the environment holds, and the HTTP client it sends
+with, `McpHttpClient`, for a caller's `HttpClientFactory`.
 """
 
 from importlib.metadata import PackageNotFoundError, version
 
+from kataloop._mcp_toolbox import (
+    HttpClientFactory,
+    McpHttpClient,
+    McpHttpTimeout,
+    McpToolbox,
+)
 from kataloop_core import (
+    DEFAULT_CONTEXT_WINDOW,
     AgentDefinition,
     CheckpointNotFoundError,
     Done,
     Engine,
     Event,
+    Kataloop,
     KataloopError,
+    LocalTool,
+    LocalToolbox,
+    MemoryStore,
     ModelSpec,
     ReasoningDelta,
+    RoundsExceededError,
     SessionExistsError,
     SessionNotFoundError,
     Store,
@@ -36,14 +50,24 @@ except PackageNotFoundError:  # a source checkout on sys.path, not installed
     __version__ = "0+unknown"
 
 __all__ = [
+    "DEFAULT_CONTEXT_WINDOW",
     "AgentDefinition",
     "CheckpointNotFoundError",
     "Done",
     "Engine",
     "Event",
+    "HttpClientFactory",
+    "Kataloop",
     "KataloopError",
+    "LocalTool",
+    "LocalToolbox",
+    "McpHttpClient",
+    "McpHttpTimeout",
+    "McpToolbox",
+    "MemoryStore",
     "ModelSpec",
     "ReasoningDelta",
+    "RoundsExceededError",
     "SessionExistsError",
     "SessionNotFoundError",
     "Store",
