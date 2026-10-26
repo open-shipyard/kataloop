@@ -54,7 +54,7 @@ select = ["E", "W", "F", "I", "B", "UP", "SIM", "RUF"]
 # on mcp 2.
 [tool.mypy]
 strict = true
-files = ["kataloop-core/src", "kataloop/src"]
+files = ["kataloop-core/src", "kataloop/src", "kataloop-core/tests"]
 
 # Unit tests of each package. The language-agnostic HTTP tests are in `tests` at
 # the root of the repository, and drive the test server in `tests` here.
