@@ -59,6 +59,7 @@ files = [
     "kataloop/src",
     "kataloop-core/tests",
     "kataloop/tests",
+    "tests",
 ]
 
 # Unit tests of each package. The language-agnostic HTTP tests are in `tests` at

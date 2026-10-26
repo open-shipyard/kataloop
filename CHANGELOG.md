@@ -56,5 +56,11 @@ and this project adheres to
   a turn compacted between its rounds replays its earlier rounds from their
   blocks too, from then on. Specified in `docs/specs/context.md`.
 - Unit tests of the core and of `McpToolbox`, run with `uv run pytest`.
+- The language-agnostic HTTP tests in `tests`: a mock vendor, a mock MCP server
+  on the MCP SDK's own server, and cases of steps that compare every vendor
+  request, every tool server request and every reply with their payloads. The
+  Python test server in `packages/python/tests` exposes the engine over HTTP;
+  the suite's coverage of both packages is the coverage CI reports. The
+  protocol is in `tests/README.md`.
 
 [Unreleased]: https://github.com/the-guish/kataloop/commits/main

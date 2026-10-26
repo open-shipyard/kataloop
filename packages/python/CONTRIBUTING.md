@@ -65,5 +65,10 @@ Build one package at a time:
     uv build --package kataloop-core
     uv build --package kataloop
 
-The test server of the language-agnostic tests will live in `tests` here, next
-to the packages and outside both, so that it ships in neither.
+The test server of the language-agnostic tests is `tests/server.py` here, next
+to the packages and outside both, so that it ships in neither. It exposes the
+engine over HTTP with `McpToolbox`, and runs under `coverage` while the tests in
+`tests` at the root of the repository drive it ([tests/README.md](../../tests/README.md)).
+They start it twice, as the implementations `python-mcp-1` and `python-mcp-2`,
+each with `uv run --extra` in its environment above, so that `uv run coverage
+combine` here, in either environment, reads what both covered.

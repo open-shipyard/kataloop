@@ -10,8 +10,9 @@ on:
 permissions:
   contents: read
 
-# Each package runs its checks only when it changes. A change to this workflow
-# runs everything. The HTTP tests join here once they exist (docs/plan.md).
+# Each package runs its checks only when it changes. A change to the shared tests
+# runs the HTTP tests of every package. A change to this workflow runs
+# everything.
 jobs:
   changes:
     runs-on: ubuntu-latest
@@ -20,7 +21,9 @@ jobs:
       pull-requests: read
     outputs:
       python: ${{ steps.filter.outputs.python == 'true' || steps.filter.outputs.ci == 'true' }}
+      python-http: ${{ steps.filter.outputs.python == 'true' || steps.filter.outputs.shared == 'true' || steps.filter.outputs.ci == 'true' }}
       typescript: ${{ steps.filter.outputs.typescript == 'true' || steps.filter.outputs.ci == 'true' }}
+      shared: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.ci == 'true' }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -31,6 +34,8 @@ jobs:
           filters: |
             ci:
               - .github/workflows/ci.yml
+            shared:
+              - tests/**
             python:
               - packages/python/**
             typescript:
@@ -105,6 +110,60 @@ jobs:
       - run: uv build --package kataloop-core
       - run: uv build --package kataloop
 
+  # The language-agnostic tests against the Python test server, on each major of
+  # the MCP SDK. Their coverage of both packages, from the two runs, is the only
+  # coverage reported for them.
+  python-http:
+    needs: changes
+    if: needs.changes.outputs.python-http == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tests
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+      # The dependencies of `tests` are all wheels from PyPI.
+      - run: uv sync --locked --no-build
+      # The test server's environments, one per major of the MCP SDK, built
+      # before the runner starts the server in each (implementations.json).
+      - working-directory: packages/python
+        run: |
+          UV_PROJECT_ENVIRONMENT=.venv-mcp-1 uv sync --locked --extra mcp-1
+          UV_PROJECT_ENVIRONMENT=.venv-mcp-2 uv sync --locked --extra mcp-2
+      - run: uv run --locked --no-build pytest --package python
+      # The coverage of both runs, combined.
+      - working-directory: packages/python
+        env:
+          UV_PROJECT_ENVIRONMENT: .venv-mcp-2
+        run: |
+          uv run --locked coverage combine
+          uv run --locked coverage xml
+      - uses: actions/upload-artifact@v7
+        with:
+          name: python-coverage
+          path: packages/python/coverage.xml
+
+  shared-lint:
+    needs: changes
+    if: needs.changes.outputs.shared == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tests
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+      # The dependencies of `tests` are all wheels from PyPI.
+      - run: uv sync --locked --no-build
+      - run: uv run --locked --no-build ruff check
+      - run: uv run --locked --no-build ruff format --check
+      - run: uv run --locked --no-build mypy
+
   typescript:
     needs: changes
     if: needs.changes.outputs.typescript == 'true'
@@ -130,6 +189,8 @@ jobs:
       - python-lint
       - python-test
       - python-build
+      - python-http
+      - shared-lint
       - typescript
     runs-on: ubuntu-latest
     steps:
