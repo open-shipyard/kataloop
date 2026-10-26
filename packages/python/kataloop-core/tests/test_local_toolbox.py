@@ -35,9 +35,10 @@ async def test_it_lists_and_calls_the_tools_of_a_server() -> None:
 
 async def test_it_refuses_what_it_does_not_have() -> None:
     toolbox = LocalToolbox({"t": [(ECHO, echo)]})
+    other = ToolServer("other", "local")
 
     with pytest.raises(LookupError, match="'other'"):
-        await toolbox.tools(ToolServer("other", "local"))
+        await toolbox.tools(other)
     with pytest.raises(LookupError, match="'missing'"):
         await toolbox.call(SERVER, "missing", {})
 
