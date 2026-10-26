@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from collections.abc import AsyncIterator, Mapping
+from collections.abc import AsyncGenerator, Mapping
 from dataclasses import dataclass, field
 from typing import Any
 from uuid import UUID
@@ -30,12 +30,18 @@ class CheckpointNotFoundError(KataloopError):
     """A checkpoint the engine does not hold for that session (ENG-2)."""
 
 
+class RoundsExceededError(KataloopError):
+    """The turn made as many model calls as its timeout allows and needed another
+    (ENG-13)."""
+
+
 @dataclass(frozen=True, slots=True)
 class ToolServer:
     """An MCP server an agent may use, with its secrets resolved by the caller."""
 
     id: str
-    """Prefixes the server's tool names: ``<server id>_<tool>`` (ENG-11)."""
+    """Names the server to the caller; its tools are offered under their own
+    names (ENG-11)."""
 
     url: str
 
@@ -63,13 +69,14 @@ class ModelSpec:
     """A uni-llm-client model id, ``provider/model``."""
 
     timeout: float = 120.0
-    """Seconds, per model call."""
+    """Seconds: the most a model call waits to connect, and for each read and
+    write of its exchange (uni-llm-client's PROV-8). It does not bound the whole
+    call; the turn's `timeout` bounds the whole turn (ENG-6)."""
 
     max_output_tokens: int | None = None
 
     context_window: int | None = None
-    """Tokens. When ``None``, what the engine knows of the model, else a default
-    (ENG-12)."""
+    """Tokens, positive. When ``None``, `DEFAULT_CONTEXT_WINDOW` (ENG-12, CTX-1)."""
 
     effort: Effort | str | None = None
 
@@ -140,11 +147,12 @@ class Engine(ABC):
         checkpoint_id: str | None,
         timeout: float,
         resume: bool = False,
-    ) -> AsyncIterator[Event]:
+    ) -> AsyncGenerator[Event, None]:
         """Run a turn and yield what happens, `Done` last.
 
         Not a coroutine: everything, the refusals included, happens inside the
-        iterator (ENG-1). With `resume`, the engine goes on with the session's
+        iterator (ENG-1), an async generator that the caller may close to cancel
+        the turn (ENG-5). With `resume`, the engine goes on with the session's
         latest turn if it began from `checkpoint_id`, else runs `prompt` from it
         (ENG-7). Past `timeout` seconds it raises `TimeoutError` (ENG-6).
 
@@ -152,6 +160,8 @@ class Engine(ABC):
             SessionNotFoundError: The session was not created.
             CheckpointNotFoundError: The checkpoint is not held for it (ENG-2).
             TimeoutError: The turn passed its deadline.
+            RoundsExceededError: The turn needed more model calls than its
+                timeout allows (ENG-13).
         """
 
     @abstractmethod
