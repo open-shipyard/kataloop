@@ -127,12 +127,16 @@ async def test_a_failure_raises_and_a_timeout_reads_as_one() -> None:
 
 
 async def test_a_server_out_of_reach_raises_the_transports_error() -> None:
+    toolbox = out_of_reach()
+
     with pytest.raises(ConnectError):
-        await out_of_reach().tools(SERVER)
+        await toolbox.tools(SERVER)
 
 
 async def test_an_http_error_status_is_an_error_response_of_the_server() -> None:
+    toolbox = answering_status(401)
+
     with pytest.raises(ServerError) as failed:
-        await answering_status(401).call(SERVER, "forecast", {"city": "Paris"})
+        await toolbox.call(SERVER, "forecast", {"city": "Paris"})
 
     assert type(failed.value).__name__ == "MCPError"
