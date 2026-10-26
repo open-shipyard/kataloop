@@ -112,7 +112,10 @@ jobs:
     # The tests first, so that the review spends nothing on broken code.
     needs: ci-ok
     # Ready pull requests from this repository only: forks get no secrets, and Claude trusts the code it reads.
+    # Every review job names its own condition: a job skipped upstream, such as a
+    # package's that did not change, would otherwise skip all those after it.
     if: >-
+      !cancelled() && needs.ci-ok.result == 'success' &&
       github.event_name == 'pull_request' && !github.event.pull_request.draft &&
       github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
@@ -154,6 +157,7 @@ jobs:
   security-review-identity:
     name: Claude security review identity
     needs: security-screening
+    if: ${{ !cancelled() && needs.security-screening.result == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -187,7 +191,9 @@ jobs:
   security-review:
     name: Claude security review
     needs: [security-screening, security-review-identity]
-    if: needs.security-review-identity.outputs.changes_ci == 'false'
+    if: >-
+      !cancelled() && needs.security-screening.result == 'success' &&
+      needs.security-review-identity.outputs.changes_ci == 'false'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -231,7 +237,7 @@ jobs:
     needs: [security-screening, security-review-identity]
     # Also when the identity check fails: its output then reads 'true'.
     if: >-
-      always() && needs.security-screening.result == 'success' &&
+      !cancelled() && needs.security-screening.result == 'success' &&
       needs.security-review-identity.outputs.changes_ci != 'false'
     runs-on: ubuntu-latest
     permissions:
