@@ -59,6 +59,19 @@ and for mcp 2:
 
 Ruff reads the code alike in either, so once is enough; why mypy takes those
 flags is in [packages/python/CONTRIBUTING.md](packages/python/CONTRIBUTING.md).
+Then the HTTP tests, with the same checks of their own code, in `tests`, which
+has an environment of its own:
+
+    unset UV_PROJECT_ENVIRONMENT
+    uv sync --locked
+    uv run --locked ruff check
+    uv run --locked ruff format --check
+    uv run --locked mypy
+    uv run --locked pytest
+
+They start the Python test server once in each of the two environments, under
+`coverage`; `uv run coverage combine` and `uv run coverage report` in
+`packages/python` read what the two runs covered of both packages.
 
 Until uni-llm-client is released, it is a git dependency pinned to a commit in
 `packages/python/pyproject.toml`, which is why `uv sync` builds it rather than
